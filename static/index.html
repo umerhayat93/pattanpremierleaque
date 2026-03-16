@@ -732,14 +732,7 @@ async function api(path,method='GET',body=null){
   }
   if(body!==null) opts.body=JSON.stringify(body);
   const r=await fetch('/api'+path,opts);
-  let j;
-  try{
-    const text=await r.text();
-    j=JSON.parse(text);
-  }catch(parseErr){
-    console.error('[API] Non-JSON response from',method,'/api'+path,'status:',r.status);
-    throw new Error('Server error (HTTP '+r.status+'): response was not JSON');
-  }
+  const j=await r.json();
   if(!j.ok) throw new Error(j.error||'API error (HTTP '+r.status+')');
   return j.data;
 }
@@ -2385,4 +2378,4 @@ if('serviceWorker' in navigator){
 })();
 </script>
 </body>
-</html>
+  </html>
