@@ -2,14 +2,11 @@ services:
   - type: web
     name: ppl2026
     env: python
-    pythonVersion: "3.11.0"
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app -w 2 -k gevent --worker-connections 1000 --timeout 120 -b 0.0.0.0:$PORT
+    startCommand: gunicorn app:app -w 1 -k gthread --threads 20 --timeout 300 -b 0.0.0.0:$PORT
     envVars:
       - key: DB_PATH
         value: /data/ppl.db
-      - key: PYTHON_VERSION
-        value: 3.11.9
     disk:
       name: ppl-data
       mountPath: /data
