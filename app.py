@@ -2,7 +2,8 @@ import os, json, sqlite3, time, queue, threading, random, string
 from flask import Flask, request, jsonify, send_from_directory, Response
 
 app = Flask(__name__, static_folder='static')
-DB_PATH = os.environ.get('DB_PATH', '/data/ppl.db')
+DB_PATH = os.environ.get('DB_PATH', 
+os.path.join(os.getcwd(), 'ppl.db'))
 ADMIN_USER = 'ppl2026'
 ADMIN_PASS = 'ppl@2620'
 
