@@ -2,7 +2,7 @@ import os, json, sqlite3, time, queue, threading, random, string
 from flask import Flask, request, jsonify, send_from_directory, Response
 
 app = Flask(__name__, static_folder='static')
-DB_PATH = os.environ.get('DB_PATH', os.path.join(os.getcwd(), 'ppl.db'))
+DB_PATH = os.environ.get('DB_PATH', '/data/ppl.db')
 ADMIN_USER = 'ppl2026'
 ADMIN_PASS = 'ppl@2620'
 
@@ -22,9 +22,7 @@ def broadcast(data):
 
 # ── Database setup ─────────────────────────────────────────────
 def get_db():
-    db_dir = os.path.dirname(DB_PATH)
-    if db_dir:
-        os.makedirs(db_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
@@ -115,46 +113,11 @@ def rows_to_list(rows):
     return [dict(r) for r in rows]
 
 def check_admin():
-    u = request.headers.get('X-Admin-User', '')
-    p = request.headers.get('X-Admin-Pass', '')
+    # Only read from headers — never consume the request body here
+    # Frontend sends X-Admin-User / X-Admin-Pass headers on all admin calls
+    u = request.headers.get('X-Admin-User','')
+    p = request.headers.get('X-Admin-Pass','')
     return u == ADMIN_USER and p == ADMIN_PASS
-
-# ── JSON error handlers (prevent HTML error pages on API routes) ──
-@app.errorhandler(400)
-def bad_request(e):
-    if request.path.startswith('/api/'):
-        return jsonify({'ok': False, 'error': 'Bad request'}), 400
-    return e
-
-@app.errorhandler(401)
-def unauthorized(e):
-    if request.path.startswith('/api/'):
-        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
-    return e
-
-@app.errorhandler(403)
-def forbidden(e):
-    if request.path.startswith('/api/'):
-        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
-    return e
-
-@app.errorhandler(404)
-def not_found(e):
-    if request.path.startswith('/api/'):
-        return jsonify({'ok': False, 'error': 'Not found'}), 404
-    return send_from_directory('static', 'index.html')
-
-@app.errorhandler(405)
-def method_not_allowed(e):
-    if request.path.startswith('/api/'):
-        return jsonify({'ok': False, 'error': 'Method not allowed'}), 405
-    return e
-
-@app.errorhandler(500)
-def internal_error(e):
-    if request.path.startswith('/api/'):
-        return jsonify({'ok': False, 'error': 'Internal server error'}), 500
-    return e
 
 # ── Static files ───────────────────────────────────────────────
 @app.route('/')
@@ -171,9 +134,8 @@ def sw():
 
 @app.route('/icons/<path:f>')
 def icons(f):
-    return send_from_directory('icons', f)
+    return send_from_directory('static/icons', f)
 
-# ── SSE stream ─────────────────────────────────────────────────
 @app.route('/api/stream')
 def stream():
     q = queue.Queue(maxsize=100)
