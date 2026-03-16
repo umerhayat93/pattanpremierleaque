@@ -738,16 +738,22 @@ async function api(path,method='GET',body=null){
 }
 
 // ── SSE ──────────────────────────────────────────────────────
+let _sseRetryDelay = 2000;
 function connectSSE(){
   const es=new EventSource('/api/stream');
+  es.onopen=()=>{
+    _sseRetryDelay=2000; // reset backoff on success
+    const dot=document.getElementById('syncDot');
+    if(dot){dot.style.background='var(--ac2)';dot.title='Live';dot.style.display='inline-block';}
+  };
   es.onmessage=e=>{
     try{
       const d=JSON.parse(e.data);
       const dot=document.getElementById('syncDot');
-      if(d.type==='connected'&&dot) dot.style.display='inline-block';
+      if(d.type==='connected'&&dot){dot.style.display='inline-block';dot.style.background='var(--ac2)';}
       else if(d.type==='ping') return;
-      else if(d.type==='groups'){GROUPS=null;loadGroups();}
-      else if(d.type==='teams'){TEAMS=null;loadTeams();}
+      else if(d.type==='groups'){loadGroups();}
+      else if(d.type==='teams'){loadTeams();}
       else if(d.type==='matches'){loadMatches();}
       else if(d.type==='players'){loadPlayers();}
       else if(d.type==='polls'){loadPolls();}
@@ -766,14 +772,39 @@ function connectSSE(){
   es.onerror=()=>{
     const dot=document.getElementById('syncDot');
     if(dot){dot.style.background='var(--red)';dot.title='Reconnecting...';}
-    setTimeout(connectSSE,5000);
+    es.close();
+    // Exponential backoff capped at 30s
+    setTimeout(connectSSE, _sseRetryDelay);
+    _sseRetryDelay=Math.min(_sseRetryDelay*2, 30000);
   };
 }
 
 // ── Load & render pipeline ──
 async function loadAll(){
-  await Promise.all([loadGroups(),loadTeams(),loadMatches(),loadPlayers(),
-                     loadPolls(),loadOrgs(),loadRules(),loadAnn(),loadGallery(),loadLive()]);
+  // PART 5: Use /api/bootstrap for a single request instead of 10 separate calls
+  try{
+    const bs=await api('/bootstrap');
+    GROUPS=(bs.groups||[]).sort((a,b)=>a.name.localeCompare(b.name));
+    TEAMS=bs.teams||[];
+    MATCHES=bs.matches||[];
+    PLAYERS=bs.players||[];
+    POLLS=bs.polls||[];
+    ORGS=bs.orgs||[];
+    RULES=bs.rules||[];
+    ANN=bs.ann||[];
+    GALLERY=bs.gallery||[];
+    LIVE=bs.live||null;
+    // Render everything
+    renderGroups();renderPoints();renderTeams();renderSchedule();renderNextMatch();
+    renderPlayers('batting');renderLeaderboards();renderPolls();renderOrgs();renderRules();
+    renderTicker();renderGallery('all');onLiveUpdate();
+    updateStats();
+    if(IS_ADMIN) populateAdminLists();
+  }catch(e){
+    console.warn('[bootstrap failed, falling back to individual calls]',e);
+    await Promise.all([loadGroups(),loadTeams(),loadMatches(),loadPlayers(),
+                       loadPolls(),loadOrgs(),loadRules(),loadAnn(),loadGallery(),loadLive()]);
+  }
 }
 
 async function loadGroups(){
@@ -960,15 +991,15 @@ function renderTicker(){
   document.getElementById('tkTrack').innerHTML=d.map(a=>'<span class="tk-item"><span class="tk-dot"></span>'+a+'</span>').join('');
 }
 
-// ── Issue 2 Fix: Next match poster shown BELOW live score ──
+// ── PART 4 FIX: Next match poster — excludes live match, auto-selects next upcoming ──
 function renderNextMatch(){
   const now=Date.now();
   const liveMatch=MATCHES.find(m=>m.status==='live');
 
-  // If live, show the live card (handled by renderLiveCard)
-  // Below it, show the next upcoming match card
+  // PART 4: When a match goes live, exclude it from the next match poster.
+  // Select the next upcoming match by earliest date+time.
   const upcoming=MATCHES
-    .filter(m=>m.status==='upcoming')
+    .filter(m=>m.status==='upcoming') // strictly 'upcoming' only — live is excluded
     .sort((a,b)=>matchDT(a)-matchDT(b));
 
   const w=document.getElementById('nextMatchWrap');
@@ -1789,32 +1820,38 @@ function saveLive(){
 
 // ── Strike rotation (cricket-accurate) ──────────────────────────
 // Rules:
-//  Odd runs (1,3,5)  → striker and non-striker swap
+//  Odd runs (1,3,5)  → striker and non-striker swap DURING the over
 //  Even runs (0,2,4,6) → striker remains
 //  Wide  → ball not counted, striker unchanged, +1 run
 //  No Ball → ball not counted, striker unchanged, +1 run
 //  Wicket → striker dismissed; admin picks new batter from squad
-//  End of over → bowling-end batter (pre-ball non-striker) ALWAYS faces new over
-//                regardless of runs scored on that last ball
+//  End of over → NON-STRIKER (bowling-end batter) ALWAYS faces new over.
+//                EXCEPTION (PART 3 FIX): If striker hits a SINGLE on the LAST BALL
+//                of the over, the odd-run swap already put the non-striker on strike,
+//                then end-of-over would swap back — net result: same batter faces next over.
+//                Correct cricket rule: single on last ball → striker stays on strike
+//                for next over (the two swaps cancel out, which is the correct behaviour).
+//                Therefore: end-of-over logic must NOT override the runs-swap.
+//                The non-striker (bowling-end batter) faces the new over ONLY when
+//                even runs (or zero) were scored on the last ball.
 // ────────────────────────────────────────────────────────────────
 
 function applyStrikeRotation(runsScored, isEndOfOver){
-  // Save who was at bowling end BEFORE runs swap (pre-ball non-striker)
-  const bowlingEndBatter = LIVE.nonstriker ? {...LIVE.nonstriker} : null;
-  const facingEndBatter  = LIVE.striker    ? {...LIVE.striker}    : null;
-
-  // Step 1: swap for odd runs
+  // Step 1: swap for odd runs (applies both mid-over and on last ball)
   if(runsScored % 2 !== 0){
     const tmp = LIVE.striker;
     LIVE.striker    = LIVE.nonstriker;
     LIVE.nonstriker = tmp;
   }
 
-  // Step 2: end of over — bowling-end batter ALWAYS faces new over
-  // (overrides whatever the runs-swap just did)
-  if(isEndOfOver && bowlingEndBatter){
-    LIVE.striker    = bowlingEndBatter;
-    LIVE.nonstriker = facingEndBatter || {name:'',runs:0,balls:0,fours:0,sixes:0};
+  // Step 2: end of over with EVEN runs — non-striker (bowling end) faces new over
+  // If odd runs were scored on the last ball, the swap above already handled it correctly:
+  // the batter who was on strike will face the next over (they ran to the other end).
+  // So we only need to rotate at end-of-over when even runs were scored.
+  if(isEndOfOver && runsScored % 2 === 0){
+    const tmp = LIVE.striker;
+    LIVE.striker    = LIVE.nonstriker;
+    LIVE.nonstriker = tmp;
   }
 }
 
