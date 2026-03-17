@@ -40,6 +40,8 @@ def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with sqlite3.connect(DB_PATH) as db:
         db.execute("PRAGMA journal_mode=WAL")
+        db.execute("PRAGMA synchronous=NORMAL")
+        db.execute("PRAGMA cache_size=-2000")
         db.executescript("""
         CREATE TABLE IF NOT EXISTS groups_(
             id TEXT PRIMARY KEY, name TEXT NOT NULL,
@@ -105,6 +107,11 @@ def init_db():
             data TEXT DEFAULT 'null');
 
         INSERT OR IGNORE INTO live_(id, data) VALUES(1, 'null');
+        
+        CREATE INDEX IF NOT EXISTS idx_teams_grp ON teams(grp);
+        CREATE INDEX IF NOT EXISTS idx_squads_team ON squads(team_id);
+        CREATE INDEX IF NOT EXISTS idx_matches_status ON matches_(status);
+        CREATE INDEX IF NOT EXISTS idx_players_team ON players(team);
         """)
 
 init_db()

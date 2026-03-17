@@ -76,7 +76,18 @@ body{font-family:'Rajdhani',sans-serif;background:var(--deep);color:var(--tx);ov
 .empty-tx{color:var(--mt);font-size:.84rem;line-height:1.7}
 .spill{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:11px;font-size:.59rem;font-weight:700;letter-spacing:.4px;white-space:nowrap;border:1px solid}
 .s-upcoming{background:rgba(0,212,255,.1);color:var(--ac);border-color:rgba(0,212,255,.2)}
-.s-live{background:rgba(255,59,92,.1);color:var(--red);border-color:rgba(255,59,92,.3);animation:lp 1.5s infinite}
+.sbtn.wkt{background:rgba(255,59,92,.1);color:var(--red);border-color:rgba(255,59,92,.2)}
+.player-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;margin-bottom:12px;max-height:200px;overflow-y:auto;padding:4px;background:rgba(255,255,255,.02);border-radius:8px;border:1px solid var(--b1)}
+.p-card{background:var(--d3);border:1px solid var(--b1);border-radius:6px;padding:8px 4px;text-align:center;cursor:pointer;transition:all .2s;position:relative;display:flex;flex-direction:column;align-items:center;gap:4px}
+.p-card:active{transform:scale(.95)}
+.p-card.sel-bat{border-color:var(--gold);background:rgba(240,192,64,.1)}
+.p-card.sel-bowl{border-color:var(--ac);background:rgba(0,212,255,.1)}
+.p-card.disabled{opacity:.3;cursor:not-allowed;pointer-events:none}
+.p-card.out{text-decoration:line-through;opacity:.5}
+.p-name-sm{font-size:.72rem;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
+.p-role-sm{font-size:.55rem;color:var(--dm);text-transform:uppercase}
+.p-badge{position:absolute;top:-4px;right:-4px;background:var(--gold);color:var(--deep);font-size:.5rem;font-weight:900;padding:1px 4px;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.p-badge.bowl{background:var(--ac)}imation:lp 1.5s infinite}
 .s-completed{background:rgba(0,255,136,.1);color:var(--ac2);border-color:rgba(0,255,136,.2)}
 .s-rain{background:rgba(0,150,255,.1);color:#4db8ff;border-color:rgba(0,150,255,.25)}
 .s-stopped{background:rgba(255,140,0,.1);color:var(--or);border-color:rgba(255,140,0,.25)}
@@ -508,6 +519,19 @@ body{font-family:'Rajdhani',sans-serif;background:var(--deep);color:var(--tx);ov
       </div>
     </div>
   </main>
+  <!-- Custom PWA Install Button -->
+  <div id="customInstallBtn" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:1000;width:90%;max-width:400px">
+    <button onclick="installApp()" style="width:100%;background:linear-gradient(135deg,var(--gd),var(--gold));color:var(--deep);border:none;border-radius:12px;padding:14px;font-family:'Bebas Neue';font-size:1.2rem;letter-spacing:2px;box-shadow:0 10px 30px rgba(240,192,64,0.4);display:flex;align-items:center;justify-content:center;gap:10px;animation:pulse-install 2s infinite">
+      <span>📲</span> INSTALL PPL APP
+    </button>
+  </div>
+  <style>
+    @keyframes pulse-install {
+      0% { transform: scale(1); box-shadow: 0 10px 30px rgba(240,192,64,0.4); }
+      50% { transform: scale(1.02); box-shadow: 0 15px 40px rgba(240,192,64,0.6); }
+      100% { transform: scale(1); box-shadow: 0 10px 30px rgba(240,192,64,0.4); }
+    }
+  </style>
 </div>
 
 <!-- ADMIN MODAL -->
@@ -538,9 +562,9 @@ body{font-family:'Rajdhani',sans-serif;background:var(--deep);color:var(--tx);ov
           <div class="srow"><button class="sbtn four" onclick="addRun(4)">4</button><button class="sbtn six" onclick="addRun(6)">6</button><button class="sbtn wide" onclick="addExtra('WD')">WD</button><button class="sbtn wide" onclick="addExtra('NB')">NB</button></div>
           <div class="srow"><button class="sbtn wkt" onclick="addWkt('Bowled')">BWD</button><button class="sbtn wkt" onclick="addWkt('Caught')">CT</button><button class="sbtn wkt" onclick="addWkt('RunOut')">RO</button><button class="sbtn wkt" onclick="addWkt('LBW')">LBW</button></div>
         </div>
-        <label class="fl">⚡ STRIKER</label><div id="strikerSquad" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
-        <label class="fl">🏏 NON-STRIKER</label><div id="nonStrikerSquad" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
-        <label class="fl">🎯 BOWLER</label><div id="bowlerSquad" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
+        <label class="fl">⚡ STRIKER</label><div id="strikerSquad" class="player-grid"></div>
+        <label class="fl">🏏 NON-STRIKER</label><div id="nonStrikerSquad" class="player-grid"></div>
+        <label class="fl">🎯 BOWLER</label><div id="bowlerSquad" class="player-grid"></div>
         <div class="fgrid" style="gap:6px">
           <button class="btns" style="color:var(--ac2);border-color:rgba(0,255,136,.3)" onclick="manualRotate()">🔄 SWAP STRIKE</button>
           <button class="btns" style="color:var(--or);border-color:rgba(255,140,0,.3)" onclick="endInnings()">🏁 END INN</button>
@@ -774,9 +798,11 @@ function connectSSE(){
       else if(d.type==='ann'){loadAnn();}
       else if(d.type==='gallery'){loadGallery();}
       else if(d.type==='live'){
-        if(d.data) detectLiveScoringEvents(d.data);
-        LIVE=d.data;
-        onLiveUpdate();
+        if(d.data && JSON.stringify(d.data) !== JSON.stringify(LIVE)) {
+          detectLiveScoringEvents(d.data);
+          LIVE=d.data;
+          onLiveUpdate();
+        }
       }
       else if(d.type==='notification') showPushBanner(d.title,d.body,d.icon||'📢');
     }catch(err){console.error('[SSE handler error]',err);}
@@ -1178,8 +1204,8 @@ function renderLiveCard(){
   const ov=Math.floor(balls/6), bl=balls%6;
   const mo=lm.overs||OVERS;
   const crr=balls>0?(runs/(balls/6)).toFixed(2):'0.00';
-  const bat=lv?.innings===2?lm.t2:lm.t1;
-  const fld=lv?.innings===2?lm.t1:lm.t2;
+  const bat=lv?.innings===2?lv.bowlingFirst:lv.battingFirst;
+  const fld=lv?.innings===2?lv.battingFirst:lv.bowlingFirst;
   const str=lv?.striker;
   const non=lv?.nonstriker;
   const bowler=lv?.currentBowler;
@@ -1678,9 +1704,20 @@ async function setLiveMatch(id){
     }
     // Set this match live
     await api('/matches/'+id+'/status','POST',{status:'live'});
+    // Match Initialization Flow: Select First Batting Team
+    const t1 = m.t1, t2 = m.t2;
+    const firstBat = prompt(`Who is batting first?\n1. ${t1}\n2. ${t2}`, "1");
+    if(!firstBat) return;
+    
+    const isT1First = firstBat === "1" || firstBat.toLowerCase() === t1.toLowerCase();
+    const battingFirst = isT1First ? t1 : t2;
+    const bowlingFirst = isT1First ? t2 : t1;
+
     // Initialise fresh live state
     const ls={
       matchId:id,innings:1,runs:0,wickets:0,balls:0,target:null,
+      battingFirst: battingFirst,
+      bowlingFirst: bowlingFirst,
       striker:{name:'',runs:0,balls:0,fours:0,sixes:0},
       nonstriker:{name:'',runs:0,balls:0,fours:0,sixes:0},
       currentBowler:{name:'',ballsBowled:0,wickets:0,runsConceded:0,economy:0},
@@ -1700,7 +1737,7 @@ function syncAdminScoreDisplay(){
   const ov=Math.floor(LIVE.balls/6), bl=LIVE.balls%6;
   const m=MATCHES.find(x=>x.id===LIVE.matchId);
   const mo=m?.overs||OVERS;
-  const battingTeam=LIVE.innings===2?m?.t2:m?.t1;
+  const battingTeam=LIVE.innings===2?LIVE.bowlingFirst:LIVE.battingFirst;
 
   // Score + overs
   const admScore=document.getElementById('admScore');
@@ -1757,8 +1794,8 @@ function syncAdminScoreDisplay(){
 async function renderLiveSquadBtns(){
   if(!LIVE) return;
   const m=MATCHES.find(x=>x.id===LIVE.matchId);if(!m) return;
-  const batT=LIVE.innings===2?m.t2:m.t1;
-  const bowlT=LIVE.innings===2?m.t1:m.t2;
+  const batT=LIVE.innings===2?LIVE.bowlingFirst:LIVE.battingFirst;
+  const bowlT=LIVE.innings===2?LIVE.battingFirst:LIVE.bowlingFirst;
   const batObj=TEAMS.find(t=>t.name===batT);
   const bowlObj=TEAMS.find(t=>t.name===bowlT);
   const [bs,bows]=await Promise.all([
@@ -1770,55 +1807,43 @@ async function renderLiveSquadBtns(){
   const sn=LIVE.striker?.name||'';
   const nn=LIVE.nonstriker?.name||'';
   const bn=LIVE.currentBowler?.name||'';
-  const strikerEmpty=!sn;   // need new batter after wicket
-  const nonEmpty=!nn;
 
-  // Batter buttons — out players greyed, currently batting highlighted
-  const mkBat=(p,slot)=>{
-    const isDismissed=outNames.includes(p.name);
-    const isOnField=p.name===sn||p.name===nn;
-    const isSlot=slot==='str'?p.name===sn:p.name===nn;
-    // Can click to assign to striker if striker slot empty (after wicket)
-    const clickable=!isOnField&&!isDismissed;
-    return '<button class="squad-btn '
-      +(isSlot?'sel-bat':'')
-      +'" onclick="'+(clickable?'selectStriker(\''+p.name+'\')':'')+'" '
-      +(isDismissed||isOnField&&!isSlot?'':'')
-      +' style="'+(isDismissed?'opacity:.35;text-decoration:line-through;cursor:default;':'')
-      +(isOnField?'cursor:default;':'')
-      +'">'+p.name+(p.name===sn?' ⚡':p.name===nn?' 🏏':'')+'</button>';
+  const createPlayerCard = (p, type, isSelected, isDisabled, isOut, otherSelected) => {
+    const clickFn = isDisabled ? '' : (type === 'striker' ? `selectStriker('${p.name}')` : type === 'nonstriker' ? `selectNonStriker('${p.name}')` : `selectBowler('${p.name}')`);
+    const badge = isSelected ? `<div class="p-badge ${type==='bowler'?'bowl':''}">${type==='striker'?'STR':type==='nonstriker'?'NON':'BWL'}</div>` : '';
+    return `<div class="p-card ${isSelected?(type==='bowler'?'sel-bowl':'sel-bat'):''} ${isDisabled?'disabled':''} ${isOut?'out':''}" onclick="${clickFn}">
+      <div class="p-name-sm">${p.name}</div>
+      <div class="p-role-sm">${p.role||'bat'}</div>
+      ${badge}
+    </div>`;
   };
 
-  // Single squad list used for both striker and non-striker
-  // (admin selects from same squad — clicking a name assigns striker)
-  const batHtml=bs.length
-    ? bs.map(p=>mkBat(p,'str')).join('')
-      +'<button class="squad-btn" onclick="var n=prompt(\'Batter name:\');if(n)selectStriker(n)" style="margin-left:4px">✏️ New</button>'
-    : '<span style="font-size:.76rem;color:var(--mt)">No squad — add players to team squad first</span>';
+  const editBtn = (type) => `<div class="p-card" onclick="var n=prompt('Enter name:');if(n)${type==='bowler'?'selectBowler':type==='striker'?'selectStriker':'selectNonStriker'}(n)">
+    <div class="p-name-sm">✏️ Custom</div>
+    <div class="p-role-sm">Manual</div>
+  </div>`;
 
-  const nonHtml=bs.length
-    ? bs.map(p=>{
-        const isDismissed=outNames.includes(p.name);
-        const isSlot=p.name===nn;
-        const isOnOtherEnd=p.name===sn;
-        return '<button class="squad-btn '+(isSlot?'sel-bat':'')+'" onclick="'+(isDismissed||isOnOtherEnd?'':('selectNonStriker(\''+p.name+'\')'))+'" style="'+(isDismissed?'opacity:.35;text-decoration:line-through;cursor:default;':isOnOtherEnd?'opacity:.5;cursor:default;':'')+'">'+p.name+(p.name===nn?' 🏏':'')+'</button>';
-      }).join('')
-      +'<button class="squad-btn" onclick="var n=prompt(\'Non-striker:\');if(n)selectNonStriker(n)" style="margin-left:4px">✏️</button>'
-    : '<span style="font-size:.76rem;color:var(--mt)">No squad</span>';
+  const batHtml = bs.length ? bs.map(p => {
+    const isOut = outNames.includes(p.name);
+    const isSel = p.name === sn;
+    const isOther = p.name === nn;
+    return createPlayerCard(p, 'striker', isSel, isOut || isOther, isOut, isOther);
+  }).join('') + editBtn('striker') : '<div style="grid-column:1/-1;text-align:center;padding:10px;color:var(--mt)">No squad found</div>';
 
-  const bowlHtml=bows.length
-    ? bows.map(p=>{
-        const isCur=p.name===bn;
-        return '<button class="squad-btn '+(isCur?'sel-bowl':'')+'" onclick="selectBowler(\''+p.name+'\')">'+p.name+(isCur?' 🎯':'')+'</button>';
-      }).join('')
-      +'<button class="squad-btn" onclick="var n=prompt(\'Bowler:\');if(n)selectBowler(n)" style="margin-left:4px">✏️</button>'
-    : '<span style="font-size:.76rem;color:var(--mt)">No squad</span>';
+  const nonHtml = bs.length ? bs.map(p => {
+    const isOut = outNames.includes(p.name);
+    const isSel = p.name === nn;
+    const isOther = p.name === sn;
+    return createPlayerCard(p, 'nonstriker', isSel, isOut || isOther, isOut, isOther);
+  }).join('') + editBtn('nonstriker') : '<div style="grid-column:1/-1;text-align:center;padding:10px;color:var(--mt)">No squad found</div>';
+
+  const bowlHtml = bows.length ? bows.map(p => {
+    const isSel = p.name === bn;
+    return createPlayerCard(p, 'bowler', isSel, false, false, false);
+  }).join('') + editBtn('bowler') : '<div style="grid-column:1/-1;text-align:center;padding:10px;color:var(--mt)">No squad found</div>';
 
   const ss=document.getElementById('strikerSquad');
-  if(ss){
-    ss.innerHTML=(strikerEmpty?'<div style="font-size:.72rem;color:var(--or);padding:4px 0;font-weight:600">⚡ WICKET — select new batter:</div>':'')
-      +batHtml;
-  }
+  if(ss) ss.innerHTML=batHtml;
   const ns=document.getElementById('nonStrikerSquad');
   if(ns) ns.innerHTML=nonHtml;
   const bws=document.getElementById('bowlerSquad');
@@ -2373,31 +2398,30 @@ let dPr=null;
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();
   dPr=e;
-  // Show both the FAB and make the card visible
-  document.getElementById('installFab').classList.add('show');
-  const ic=document.getElementById('installCard');
-  if(ic) ic.style.borderColor='var(--b2)';
+  const cib = document.getElementById('customInstallBtn');
+  if(cib) cib.style.display = 'block';
 });
 window.addEventListener('appinstalled',()=>{
   dPr=null;
-  document.getElementById('installFab').classList.remove('show');
+  const cib = document.getElementById('customInstallBtn');
+  if(cib) cib.style.display = 'none';
   T('✅ App installed!');
 });
 function installApp(){
   if(dPr){
-    // Android / Chrome — native prompt
     dPr.prompt();
     dPr.userChoice.then(r=>{
-      if(r.outcome==='accepted'){document.getElementById('installFab').classList.remove('show');}
+      if(r.outcome==='accepted'){
+        const cib = document.getElementById('customInstallBtn');
+        if(cib) cib.style.display = 'none';
+      }
       dPr=null;
     });
   } else if(/iphone|ipad|ipod/i.test(navigator.userAgent)){
-    // iOS Safari — manual instruction
     alert('To install PPL 2026:\n\n1. Tap the Share button (box with arrow) at the bottom\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add"');
   } else if(window.matchMedia('(display-mode: standalone)').matches){
     T('✅ Already installed as app!');
   } else {
-    // Desktop Chrome / Edge — show instructions
     T('📲 In Chrome: Menu (⋮) → "Install PPL 2026..."');
   }
 }
@@ -2430,6 +2454,21 @@ if('serviceWorker' in navigator){
 
   await loadAll();
   connectSSE();
+  
+  // Live Score Auto-Update (Real-Time Sync)
+  // Fallback polling every 3 seconds to ensure real-time updates even if SSE fails
+  setInterval(async () => {
+    try {
+      const r = await fetch('/api/live');
+      const j = await r.json();
+      if(j.ok && JSON.stringify(j.data) !== JSON.stringify(LIVE)) {
+        detectLiveScoringEvents(j.data);
+        LIVE = j.data;
+        onLiveUpdate();
+      }
+    } catch(e) {}
+  }, 3000);
+
   // FIX 5: If admin session was restored, show dashboard immediately
   if(IS_ADMIN){
     const lf=document.getElementById('aLoginF');
