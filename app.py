@@ -192,9 +192,9 @@ def save_group():
     gid = d.get('id') or uid()
     db = get_db()
     db.execute("INSERT OR REPLACE INTO groups_ VALUES(?,?,?,?)",
-        (gid, name, d.get('color','gold'), int(time.time())))
+        (gid, name, d.get("color","gold"), int(time.time())))
     db.commit()
-    broadcast({'type':'groups'})
+    broadcast({"type":"groups"})
     return ok({'id': gid})
 
 @app.route('/api/groups/<gid>', methods=['DELETE'])
@@ -202,10 +202,10 @@ def delete_group(gid):
     if not check_admin(): return err('Unauthorized', 401)
     db = get_db()
     db.execute("DELETE FROM groups_ WHERE id=?", (gid,))
-    db.execute("UPDATE teams SET grp='' WHERE grp=?", (gid,))
+    db.execute("UPDATE teams SET grp=\'\' WHERE grp=?", (gid,))
     db.commit()
-    broadcast({'type':'groups'})
-    broadcast({'type':'teams'})
+    broadcast({"type":"groups"})
+    broadcast({"type":"teams"})
     return ok()
 
 # ── Teams ──────────────────────────────────────────────────────
@@ -224,10 +224,10 @@ def save_team():
     tid = d.get('id') or uid()
     db = get_db()
     db.execute("INSERT OR REPLACE INTO teams VALUES(?,?,?,?,?,?)",
-        (tid, name, d.get('emoji','?'), d.get('captain',''),
-         d.get('grp',''), int(time.time())))
+        (tid, name, d.get("emoji","?"), d.get("captain",""),
+         d.get("grp",""), int(time.time())))
     db.commit()
-    broadcast({'type':'teams'})
+    broadcast({"type":"teams"})
     return ok({'id': tid})
 
 @app.route('/api/teams/<tid>', methods=['DELETE'])
@@ -236,7 +236,7 @@ def delete_team(tid):
     db = get_db()
     db.execute("DELETE FROM teams WHERE id=?", (tid,))
     db.commit()
-    broadcast({'type':'teams'})
+    broadcast({"type":"teams"})
     return ok()
 
 # ── Squads ─────────────────────────────────────────────────────
@@ -257,6 +257,7 @@ def add_squad(tid):
     db.execute("INSERT INTO squads VALUES(?,?,?,?,?)",
         (pid, tid, name, d.get('role','bat'), int(time.time())))
     db.commit()
+    broadcast({'type':'teams'}) # Squad change affects team view
     return ok({'id': pid})
 
 @app.route('/api/squads/<tid>/<pid>', methods=['DELETE'])
@@ -265,6 +266,7 @@ def del_squad(tid, pid):
     db = get_db()
     db.execute("DELETE FROM squads WHERE id=? AND team_id=?", (pid, tid))
     db.commit()
+    broadcast({'type':'teams'})
     return ok()
 
 # ── Matches ────────────────────────────────────────────────────
@@ -290,16 +292,16 @@ def save_match():
     mid = d.get('id') or uid()
     db = get_db()
     db.execute("INSERT OR REPLACE INTO matches_ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        (mid, d.get('stage','group'), d.get('grp',''), d.get('no',''),
-         d['t1'], d['t2'], d.get('date_',''), d.get('time_',''),
-         int(d.get('year_',2026)), d.get('venue','Pattan Cricket Ground'),
-         d.get('status','upcoming'), d.get('result',''),
-         d.get('s1',''), d.get('s2',''), 10,
-         json.dumps(d.get('highlights',{})),
-         json.dumps(d.get('inn1',{})),
+        (mid, d.get("stage","group"), d.get("grp",""), d.get("no",""),
+         d["t1"], d["t2"], d.get("date_",""), d.get("time_",""),
+         int(d.get("year_",2026)), d.get("venue","Pattan Cricket Ground"),
+         d.get("status","upcoming"), d.get("result",""),
+         d.get("s1",""), d.get("s2",""), 10,
+         json.dumps(d.get("highlights",{})),
+         json.dumps(d.get("inn1",{})),
          int(time.time())))
     db.commit()
-    broadcast({'type':'matches'})
+    broadcast({"type":"matches"})
     return ok({'id': mid})
 
 @app.route('/api/matches/<mid>', methods=['DELETE'])
@@ -308,19 +310,18 @@ def delete_match(mid):
     db = get_db()
     db.execute("DELETE FROM matches_ WHERE id=?", (mid,))
     db.commit()
-    broadcast({'type':'matches'})
+    broadcast({"type":"matches"})
     return ok()
 
 @app.route('/api/matches/<mid>/finish', methods=['POST'])
 def finish_match(mid):
     if not check_admin(): return err('Unauthorized', 401)
     d = request.get_json(silent=True) or {}
-    db = get_db()
-    db.execute("UPDATE matches_ SET status='completed',result=?,s1=?,s2=?,highlights=? WHERE id=?",
-        (d.get('result',''), d.get('s1',''), d.get('s2',''),
-         json.dumps(d.get('highlights',{})), mid))
+    db = get_db(    db.execute("UPDATE matches_ SET status=\'completed\',result=?,s1=?,s2=?,highlights=? WHERE id=?",
+        (d.get("result",""), d.get("s1",""), d.get("s2",""),
+         json.dumps(d.get("highlights",{})), mid))
     db.commit()
-    broadcast({'type':'matches'})
+    broadcast({"type":"matches"})
     return ok()
 
 @app.route('/api/matches/<mid>/inn1', methods=['POST'])
@@ -331,6 +332,7 @@ def save_inn1(mid):
     db.execute("UPDATE matches_ SET inn1=?,s1=? WHERE id=?",
         (json.dumps(d.get('inn1',{})), d.get('s1',''), mid))
     db.commit()
+    broadcast({'type':'matches'})
     return ok()
 
 @app.route('/api/matches/<mid>/status', methods=['POST'])
@@ -392,12 +394,12 @@ def save_player():
     pid = d.get('id') or uid()
     db = get_db()
     db.execute("INSERT OR REPLACE INTO players VALUES(?,?,?,?,?,?,?,?,?,?)",
-        (pid, name, d.get('emoji','?'), d.get('team',''),
-         d.get('role','batting'), int(d.get('runs',0)),
-         int(d.get('wickets',0)), float(d.get('sr',0)),
-         d.get('best',''), int(time.time())))
+        (pid, name, d.get("emoji","?"), d.get("team",""),
+         d.get("role","batting"), int(d.get("runs",0)),
+         int(d.get("wickets",0)), float(d.get("sr",0)),
+         d.get("best",""), int(time.time())))
     db.commit()
-    broadcast({'type':'players'})
+    broadcast({"type":"players"})
     return ok({'id': pid})
 
 @app.route('/api/players/<pid>', methods=['DELETE'])
@@ -406,7 +408,7 @@ def delete_player(pid):
     db = get_db()
     db.execute("DELETE FROM players WHERE id=?", (pid,))
     db.commit()
-    broadcast({'type':'players'})
+    broadcast({"type":"players"})
     return ok()
 
 # ── Polls ──────────────────────────────────────────────────────
@@ -436,10 +438,10 @@ def save_poll():
     pid = uid()
     db = get_db()
     db.execute("INSERT INTO polls VALUES(?,?,?,?,?,?,?)",
-        (pid, d.get('type_','Poll'), q, json.dumps(opts),
-         json.dumps([0]*len(opts)), '{}', int(time.time())))
+        (pid, d.get("type_","Poll"), q, json.dumps(opts),
+         json.dumps([0]*len(opts)), "{}", int(time.time())))
     db.commit()
-    broadcast({'type':'polls'})
+    broadcast({"type":"polls"})
     return ok({'id': pid})
 
 @app.route('/api/polls/<pid>/vote', methods=['POST'])
@@ -469,7 +471,7 @@ def delete_poll(pid):
     db = get_db()
     db.execute("DELETE FROM polls WHERE id=?", (pid,))
     db.commit()
-    broadcast({'type':'polls'})
+    broadcast({"type":"polls"})
     return ok()
 
 # ── Orgs ───────────────────────────────────────────────────────
@@ -488,10 +490,10 @@ def save_org():
     oid = d.get('id') or uid()
     db = get_db()
     db.execute("INSERT OR REPLACE INTO orgs VALUES(?,?,?,?,?,?)",
-        (oid, name, d.get('role',''), d.get('emoji','?'),
-         d.get('since',''), int(time.time())))
+        (oid, name, d.get("role",""), d.get("emoji","?"),
+         d.get("since",""), int(time.time())))
     db.commit()
-    broadcast({'type':'orgs'})
+    broadcast({"type":"orgs"})
     return ok({'id': oid})
 
 @app.route('/api/orgs/<oid>', methods=['DELETE'])
@@ -500,7 +502,7 @@ def delete_org(oid):
     db = get_db()
     db.execute("DELETE FROM orgs WHERE id=?", (oid,))
     db.commit()
-    broadcast({'type':'orgs'})
+    broadcast({"type":"orgs"})
     return ok()
 
 # ── Rules ──────────────────────────────────────────────────────
@@ -520,7 +522,7 @@ def add_rule():
     cur = db.execute("INSERT INTO rules_(content) VALUES(?)", (content,))
     rid = cur.lastrowid
     db.commit()
-    broadcast({'type':'rules'})
+    broadcast({"type":"rules"})
     return ok({'id': rid})
 
 @app.route('/api/rules/<int:rid>', methods=['DELETE'])
@@ -529,7 +531,7 @@ def delete_rule(rid):
     db = get_db()
     db.execute("DELETE FROM rules_ WHERE id=?", (rid,))
     db.commit()
-    broadcast({'type':'rules'})
+    broadcast({"type":"rules"})
     return ok()
 
 # ── Announcements ──────────────────────────────────────────────
@@ -549,7 +551,7 @@ def add_ann():
     cur = db.execute("INSERT INTO ann(content,created) VALUES(?,?)", (content, int(time.time())))
     aid = cur.lastrowid
     db.commit()
-    broadcast({'type':'ann'})
+    broadcast({"type":"ann"})
     return ok({'id': aid})
 
 @app.route('/api/ann/<int:aid>', methods=['DELETE'])
@@ -558,7 +560,7 @@ def delete_ann(aid):
     db = get_db()
     db.execute("DELETE FROM ann WHERE id=?", (aid,))
     db.commit()
-    broadcast({'type':'ann'})
+    broadcast({"type":"ann"})
     return ok()
 
 # ── Gallery ────────────────────────────────────────────────────
@@ -575,10 +577,10 @@ def add_gallery():
     gid = uid()
     db = get_db()
     db.execute("INSERT INTO gallery VALUES(?,?,?,?,?)",
-        (gid, d.get('emoji','?'), d.get('label',''),
-         d.get('cat','match'), int(time.time())))
+        (gid, d.get("emoji","?"), d.get("label",""),
+         d.get("cat","match"), int(time.time())))
     db.commit()
-    broadcast({'type':'gallery'})
+    broadcast({"type":"gallery"})
     return ok({'id': gid})
 
 @app.route('/api/gallery/<gid>', methods=['DELETE'])
@@ -587,7 +589,7 @@ def delete_gallery(gid):
     db = get_db()
     db.execute("DELETE FROM gallery WHERE id=?", (gid,))
     db.commit()
-    broadcast({'type':'gallery'})
+    broadcast({"type":"gallery"})
     return ok()
 
 # ── Notify ─────────────────────────────────────────────────────
