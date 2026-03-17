@@ -317,7 +317,8 @@ def delete_match(mid):
 def finish_match(mid):
     if not check_admin(): return err('Unauthorized', 401)
     d = request.get_json(silent=True) or {}
-    db = get_db(    db.execute("UPDATE matches_ SET status=\'completed\',result=?,s1=?,s2=?,highlights=? WHERE id=?",
+    db = get_db()
+    db.execute("UPDATE matches_ SET status='completed',result=?,s1=?,s2=?,highlights=? WHERE id=?",
         (d.get("result",""), d.get("s1",""), d.get("s2",""),
          json.dumps(d.get("highlights",{})), mid))
     db.commit()
